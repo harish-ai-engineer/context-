@@ -40,7 +40,7 @@ License: **Apache-2.0** (decided; supersedes the MIT line in the spec draft).
 | Golden corpus + CI metrics | 🟡 harness + seed corpus (7 docs) live; needs real docs + CI wiring |
 | Public benchmark page vs MarkItDown/Docling | 🟡 seed results published (markitdown scored; docling pending install) |
 | < 5s parse for 50-page digital PDF | ✅ 0.51s measured (synthetic 50-pager, pypdf backend) |
-| pip install works Linux/macOS/Windows | ❓ untested (no publish yet) |
+| pip install works Linux/macOS/Windows | ✅ published as **agentcontext-core** 0.1.0; verified install+run from PyPI on Windows |
 
 Verified: 16/16 spec-compliance tests (`tests/test_udm.py`), live CLI checked.
 
@@ -53,7 +53,8 @@ Verified: 16/16 spec-compliance tests (`tests/test_udm.py`), live CLI checked.
    zero-scoring for failed parses)
 2. Wire the harness into CI; add Docling to the baseline row
 3. ~~Perf check~~ ✅ 0.51s for a 50-page digital PDF
-4. Package publish dry-run (`pip install agentcontext`) on all three OSes
+4. ~~Package publish~~ ✅ live on PyPI as `agentcontext-core` (plain name blocked
+   by unrelated `agent-context` project); Linux/macOS install verification pending CI
 
 ## v0.2 preview (do not build yet)
 

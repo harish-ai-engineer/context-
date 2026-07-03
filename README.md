@@ -31,15 +31,16 @@ If your LLM answer says *"revenue grew 12%"*, AgentContext lets you point at **p
 
 ## Install
 
-Not on PyPI yet — install straight from GitHub:
-
 ```bash
 # core: txt / md / html parsing, zero dependencies
-pip install git+https://github.com/harish-ai-engineer/agentcontext.git
+pip install agentcontext-core
 
 # with PDF + DOCX support
-pip install "agentcontext[pdf,docx] @ git+https://github.com/harish-ai-engineer/agentcontext.git"
+pip install "agentcontext-core[pdf,docx]"
 ```
+
+(The PyPI name is `agentcontext-core` — plain `agentcontext` is name-blocked by
+an unrelated existing project. The import is still `import agentcontext`.)
 
 No GPU. No torch. No API keys. Pure parsing.
 

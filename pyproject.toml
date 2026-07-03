@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agentcontext"
+name = "agentcontext-core"
 version = "0.1.0"
 description = "Document parsing that never loses provenance: every block of output knows its source page, section, and location."
 readme = "README.md"
