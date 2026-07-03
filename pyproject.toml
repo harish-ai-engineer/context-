@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "agentcontext"
 version = "0.1.0"
-description = "The open context-engineering platform: turn any document into AI-ready, cited context for LLMs and agents."
+description = "Document parsing that never loses provenance: every block of output knows its source page, section, and location."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "AgentContext" }]
-keywords = ["rag", "llm", "context", "agents", "document-parsing", "retrieval", "embeddings"]
+keywords = ["document-parsing", "provenance", "citations", "pdf", "docx", "markdown", "rag", "llm"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -18,15 +18,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-# Core has ZERO hard dependencies: the full parse->chunk->embed->retrieve->context
-# slice runs offline with only the standard library.
+# Core has ZERO hard dependencies: txt/md/html parsing is pure stdlib.
+# No torch, no CUDA, no API keys — pure parsing (spec rule).
 dependencies = []
 
 [project.optional-dependencies]
 pdf = ["pypdf>=4.0"]
 docx = ["python-docx>=1.1"]
-openai = ["openai>=1.0"]
-all = ["pypdf>=4.0", "python-docx>=1.1", "openai>=1.0"]
+all = ["pypdf>=4.0", "python-docx>=1.1"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
 
 [project.scripts]

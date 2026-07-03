@@ -6,11 +6,12 @@ Install with:  pip install "agentcontext[docx]"
 from __future__ import annotations
 
 from ..core.model import Block, BlockType, Document, Provenance
-from .base import Parser, register_parser
+from .base import Parser, SectionTracker, register_parser
 
 
 class DocxParser(Parser):
     name = "docx"
+    version = "docx-parser/0.1"
     extensions = ("docx",)
 
     def parse(self, path: str) -> Document:
@@ -22,23 +23,32 @@ class DocxParser(Parser):
             ) from exc
 
         d = docx.Document(path)
-        doc = Document(source=path, meta={"parser": self.name})
-        section = ""
+        doc = Document(source=path)
+        props = getattr(d, "core_properties", None)
+        if props is not None:
+            doc.meta["title"] = props.title or None
+            doc.meta["author"] = props.author or None
+            doc.meta["created"] = props.created.isoformat() if props.created else None
+
+        sections = SectionTracker()
+
+        def prov() -> Provenance:
+            return Provenance(source=path, section_path=sections.path,
+                              parser=self.name, version=self.version)
+
         for para in d.paragraphs:
             text = para.text.strip()
             if not text:
                 continue
             style = (para.style.name or "").lower() if para.style else ""
-            prov = Provenance(source=path, section=section, parser=self.name, version="docx-parser/0.1")
             if style.startswith("heading"):
                 level = int("".join(filter(str.isdigit, style)) or 1)
-                if level <= 1:
-                    section = text
-                doc.add(Block(type=BlockType.HEADING, text=text, level=level, provenance=prov))
+                sections.push(level, text)
+                doc.add(Block(type=BlockType.HEADING, text=text, level=level, provenance=prov()))
             elif style.startswith("list") or para.text.startswith(("- ", "•")):
-                doc.add(Block(type=BlockType.LIST_ITEM, text=text.lstrip("-• "), provenance=prov))
+                doc.add(Block(type=BlockType.LIST_ITEM, text=text.lstrip("-• "), provenance=prov()))
             else:
-                doc.add(Block(type=BlockType.PARAGRAPH, text=text, provenance=prov))
+                doc.add(Block(type=BlockType.PARAGRAPH, text=text, provenance=prov()))
 
         # Tables -> markdown-rendered TABLE blocks (kept in reading order at end for v0.1)
         for table in d.tables:
@@ -51,7 +61,7 @@ class DocxParser(Parser):
                     type=BlockType.TABLE,
                     text=md,
                     meta={"markdown": md, "rows": rows},
-                    provenance=Provenance(source=path, section=section, parser=self.name),
+                    provenance=prov(),
                 )
             )
         return doc

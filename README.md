@@ -1,83 +1,146 @@
 # AgentContext
 
-**The open context-engineering platform: turn any document into AI-ready, cited context for LLMs and agents.**
+**Document parsing that never loses the plot — or the page number.**
 
-AgentContext runs the full pipeline — **parse → chunk → embed → retrieve → context** — with **zero hard dependencies**. The default path works entirely offline (no API keys, no native libraries); swap in real embedders or parsers through the plugin system when you need production quality.
+AgentContext converts documents into clean Markdown and structured JSON, and unlike other converters, **every block of output carries provenance**: source, page, hierarchical section path, and character span. When your agent cites something, you can prove where it came from.
+
+```
+PDF / DOCX / HTML / Markdown  →  Markdown + JSON, fully traceable
+```
+
+## Why another parser?
+
+Tools like MarkItDown and Docling produce good Markdown — and then throw away most of what an AI agent needs to be trustworthy:
+
+| | MarkItDown | Docling | **AgentContext** |
+|---|---|---|---|
+| Clean Markdown | ✅ | ✅ | ✅ |
+| Structured JSON model | ❌ | ✅ | ✅ |
+| Page-level provenance on every block | ❌ | partial | ✅ |
+| Hierarchical section path per block | ❌ | ❌ | ✅ |
+| Inline citation anchors in Markdown | ❌ | ❌ | ✅ |
+| Bounding boxes | ❌ | partial | 🔜 v0.2 |
+| Built for downstream RAG citations | ❌ | ❌ | ✅ |
+
+If your LLM answer says *"revenue grew 12%"*, AgentContext lets you point at **page 7, section "3. Financials > 3.2 Revenue"** — automatically. (Bounding boxes land in v0.2 with layout analysis.)
 
 ## Install
 
 ```bash
-pip install agentcontext                 # core, zero dependencies
-pip install "agentcontext[pdf,docx]"     # + PDF / DOCX parsers
-pip install "agentcontext[openai]"       # + OpenAI embeddings
-pip install "agentcontext[all]"          # everything
+pip install agentcontext                # txt / md / html — zero dependencies
+pip install "agentcontext[pdf,docx]"    # + PDF and DOCX
 ```
 
-## Quick start (Python)
+No GPU. No torch. No API keys. Pure parsing.
+
+## Quickstart
 
 ```python
-import agentcontext as ac
+from agentcontext import Document
 
-pkg = ac.build_context_from_files(
-    "What is the refund policy?",
-    ["policy.pdf", "faq.md"],
-    k=5,
-)
+doc = Document.parse("report.pdf")
 
-print(pkg.to_prompt())   # citation-annotated context, ready for an LLM
-for c in pkg.citations:  # every claim is traceable to its source
-    print(c.to_dict())
+print(doc.to_markdown())              # clean, structured markdown
+print(doc.to_json())                  # full document model, lossless
+
+for block in doc.blocks:
+    print(block.text[:60], "→ page", block.provenance.page)
+
+for table in doc.tables:
+    print(table.to_rows())            # structured cells, with provenance
 ```
 
-Or use the object API — one lazy, cached handle over the whole pipeline:
-
-```python
-doc = ac.Doc("report.pdf")
-
-doc.summary()                  # extractive summary (offline)
-doc.search("revenue", k=3)     # ranked, cited chunks
-doc.context("What changed?")   # cited ContextPackage for an LLM
-doc.tables(); doc.sections()   # structural views
-doc.to_markdown()
-```
-
-Each stage is also available on its own:
-
-```python
-doc     = ac.parse("report.pdf")           # -> Document (Unified Document Model)
-chunks  = ac.chunk(doc, strategy="token")  # -> list[Chunk], carrying provenance
-results = ac.retrieve(chunks, "revenue", k=3)
-pkg     = ac.build_context("revenue", results, documents=[doc])
-```
-
-## Quick start (CLI)
+Or from the command line:
 
 ```bash
-# Parse a document into Markdown / text / JSON
-agentcontext parse report.pdf --to markdown
-
-# Chunk, search, summarize
-agentcontext chunk report.pdf --strategy section
-agentcontext search "revenue" --docs report.pdf deck.pptx --k 5
-agentcontext summarize report.pdf --sentences 3
-
-# Build a cited context package for a query
-agentcontext context "What is the refund policy?" --docs policy.pdf faq.md --k 5
-agentcontext context "revenue in Q3" --docs report.pdf --format json
+agentcontext parse report.pdf                # writes report.md next to the source
+agentcontext parse report.pdf --json         # writes report.json (full document model)
+agentcontext parse report.pdf --cite inline  # markdown with provenance anchors
 ```
 
-## How it fits together
+## Supported formats (v0.1)
 
-| Stage | Module | Built-ins |
-|-------|--------|-----------|
-| **parse** | `agentcontext.parsers` | text/markdown, HTML, CSV/TSV, JSON/JSONL, XML, PPTX, XLSX (all stdlib), PDF (`pypdf`), DOCX (`python-docx`) |
-| **chunk** | `agentcontext.chunking` | `token` (fixed-size + overlap), `section` (structure-preserving) |
-| **embed** | `agentcontext.embeddings` | `hashing` (offline default), `openai` |
-| **retrieve** | `agentcontext.retrieval` | `vector` (in-memory cosine) |
-| **understand** | `agentcontext.understanding` | `summarize` (extractive, offline) |
-| **context** | `agentcontext.context` | `build_context` → cited `ContextPackage` |
+- **PDF** (digital / text-layer)
+- **DOCX**
+- **HTML**
+- **Markdown** (normalization + provenance) and plain text
 
-Everything flows through one **Unified Document Model** (`Document` → `Block` → `Provenance`), so a chunk returned to an agent can always be traced back to an exact source location. Each stage is a plugin registered in `agentcontext.core.registry`, so new parsers, chunkers, embedders, and retrievers drop in without touching the core.
+OCR for scanned documents, PPTX, and XLSX are next on the [roadmap](#roadmap).
+
+## The Unified Document Model
+
+Every parser emits the same structure, so downstream code never cares what the source format was. Unknown provenance fields are **explicit `null`, never omitted** — a block without provenance is a bug:
+
+```json
+{
+  "udm_version": "0.1",
+  "metadata": {
+    "title": null, "author": null, "created": null,
+    "source_path": "/abs/path/report.pdf",
+    "sha256": "…", "parser": "pdf", "parser_version": "pdf-parser/0.1"
+  },
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "Revenue grew 12% year over year...",
+      "level": null,
+      "provenance": {
+        "source": "report.pdf",
+        "page": 7,
+        "section_path": "3. Financials > 3.2 Revenue",
+        "bbox": null,
+        "char_span": null,
+        "confidence": 0.9,
+        "parser": "pdf",
+        "version": "pdf-parser/0.1"
+      }
+    }
+  ],
+  "tables": [ ... ]
+}
+```
+
+## Benchmarks
+
+A public benchmark against MarkItDown and Docling on a golden corpus (papers, reports, contracts, invoices) — measuring text accuracy, structure accuracy, table cell accuracy, and provenance accuracy — is under construction: see [BENCHMARKS.md](./BENCHMARKS.md).
+
+We will publish the numbers even where we lose. Trust is the product.
+
+## Roadmap
+
+- **v0.1 (now):** PDF/DOCX/HTML/MD → Markdown + JSON with full provenance. CLI + Python SDK.
+- **v0.2:** OCR for scanned documents, PPTX/XLSX parsers, provenance-preserving chunking.
+- **v0.3:** Embedding adapters, citation-aware retrieval helpers.
+- **Later:** Context packages for agents — retrieval that returns not just chunks, but summaries, tables, entities, and citations in one structured payload.
+
+The long-term vision is a full open context-engineering layer for AI agents. The short-term promise is simpler: **the most trustworthy parser you can put in a RAG pipeline.**
+
+## Design principles
+
+1. **Provenance is not optional.** A block without a source location is a bug.
+2. **Small core, pluggable edges.** Parsers, OCR engines, and exporters implement a small protocol.
+3. **No heavyweight dependencies in core.** `pip install` and go.
+4. **Honest benchmarks.** Measured in CI, published publicly.
+
+## Contributing
+
+The `Parser` protocol makes new formats easy to add:
+
+```python
+from agentcontext import Document, Parser, register_parser
+
+class EpubParser(Parser):
+    name = "epub"
+    version = "epub-parser/0.1"
+    extensions = ("epub",)
+
+    def parse(self, path: str) -> Document:
+        ...
+
+register_parser(EpubParser())
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 

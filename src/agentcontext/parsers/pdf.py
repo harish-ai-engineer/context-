@@ -1,6 +1,9 @@
-"""PDF parser (optional dependency: pypdf).
+"""PDF parser for digital / text-layer PDFs (optional dependency: pypdf).
 
 Install with:  pip install "agentcontext[pdf]"
+
+Scanned PDFs / OCR are explicitly out of scope for v0.1 (spec); an OCR parser
+arrives as a plugin in v0.2 through the same Parser protocol.
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ from .base import Parser, register_parser
 
 class PDFParser(Parser):
     name = "pdf"
+    version = "pdf-parser/0.1"
     extensions = ("pdf",)
 
     def parse(self, path: str) -> Document:
@@ -24,10 +28,11 @@ class PDFParser(Parser):
             ) from exc
 
         reader = PdfReader(path)
-        doc = Document(source=path, meta={"parser": self.name, "pages": len(reader.pages)})
+        doc = Document(source=path, meta={"pages": len(reader.pages)})
         info = getattr(reader, "metadata", None)
-        if info and info.title:
-            doc.meta["title"] = str(info.title)
+        if info is not None:
+            doc.meta["title"] = str(info.title) if info.title else None
+            doc.meta["author"] = str(info.author) if info.author else None
 
         for page_no, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
@@ -42,13 +47,21 @@ class PDFParser(Parser):
                         provenance=Provenance(
                             source=path,
                             page=page_no,
+                            # bbox/section_path stay null: text-layer extraction
+                            # has no layout model in v0.1 (explicit, per spec)
                             parser=self.name,
-                            version="pdf-parser/0.1",
+                            version=self.version,
                             confidence=0.9,  # extracted text; OCR path would set lower
                         ),
                     )
                 )
-            doc.add(Block(type=BlockType.PAGE_BREAK, provenance=Provenance(source=path, page=page_no)))
+            doc.add(
+                Block(
+                    type=BlockType.PAGE_BREAK,
+                    provenance=Provenance(source=path, page=page_no,
+                                          parser=self.name, version=self.version),
+                )
+            )
         return doc
 
 

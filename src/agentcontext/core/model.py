@@ -1,18 +1,24 @@
-"""Unified Document Model — the keystone data model of AgentContext.
+"""Unified Document Model (UDM) — the keystone data model of AgentContext.
 
-Every parser produces a :class:`Document` (an ordered list of :class:`Block`s
-carrying provenance). Every downstream stage — chunking, embedding, retrieval,
-context building — reads and writes these same types. Get this right and the
-rest of the platform composes cleanly; get it wrong and every module inherits
-the mistake.
+Every parser emits a :class:`Document` (an ordered list of :class:`Block`s
+carrying provenance). v0.1 rule set (see agentcontext-v0.1-spec-and-readme.md):
+
+- **No block without provenance.** If a parser can't determine a field it is
+  explicitly ``null`` in the JSON output, never omitted.
+- The UDM is versioned (``udm_version``). Breaking changes bump it.
+- Tables are first-class: present inline as blocks *and* in ``tables[]`` with
+  cell-level structure.
 """
 
 from __future__ import annotations
 
+import json
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Iterable, Optional
+
+UDM_VERSION = "0.1"
 
 
 def _new_id(prefix: str) -> str:
@@ -40,13 +46,14 @@ class BlockType(str, Enum):
 class Provenance:
     """Where a piece of content came from — the basis for citations.
 
-    Provenance travels with content through every stage so that a chunk
-    returned to an agent can always be traced back to an exact location.
+    Provenance travels with content through every stage so any output can be
+    traced back to an exact location. Unknown fields serialize as explicit
+    ``null`` — never omitted (spec rule).
     """
 
     source: str  # path or URI of the origin document
     page: Optional[int] = None  # 1-indexed page, when applicable
-    section: Optional[str] = None  # section path, e.g. "1.2 Methods"
+    section_path: Optional[str] = None  # hierarchical, e.g. "2. Methods > 2.1 Setup"
     bbox: Optional[tuple[float, float, float, float]] = None  # (x0, y0, x1, y1)
     char_span: Optional[tuple[int, int]] = None  # char offsets in source text
     confidence: float = 1.0  # 0..1, parser/OCR confidence
@@ -54,7 +61,7 @@ class Provenance:
     version: Optional[str] = None  # processing version, for reproducibility
 
     def to_dict(self) -> dict[str, Any]:
-        return {k: v for k, v in asdict(self).items() if v is not None}
+        return asdict(self)  # all fields, explicit nulls included
 
 
 @dataclass
@@ -69,14 +76,35 @@ class Block:
     meta: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        d: dict[str, Any] = {"id": self.id, "type": self.type.value, "text": self.text}
-        if self.level is not None:
-            d["level"] = self.level
-        if self.provenance is not None:
-            d["provenance"] = self.provenance.to_dict()
-        if self.meta:
-            d["meta"] = self.meta
-        return d
+        return {
+            "id": self.id,
+            "type": self.type.value,
+            "text": self.text,
+            "level": self.level,
+            # explicit null when a parser truly could not attribute the block
+            "provenance": self.provenance.to_dict() if self.provenance else None,
+            "meta": self.meta,
+        }
+
+
+@dataclass
+class Table:
+    """A structural view over a TABLE block: cell-level rows plus provenance."""
+
+    rows: list[list[str]]
+    block_id: str
+    provenance: Optional[Provenance] = None
+    markdown: str = ""
+
+    def to_rows(self) -> list[list[str]]:
+        return self.rows
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "block_id": self.block_id,
+            "rows": self.rows,
+            "provenance": self.provenance.to_dict() if self.provenance else None,
+        }
 
 
 @dataclass
@@ -88,14 +116,36 @@ class Document:
     id: str = field(default_factory=lambda: _new_id("doc"))
     meta: dict[str, Any] = field(default_factory=dict)
 
-    # -- construction helpers -------------------------------------------------
+    # -- construction ----------------------------------------------------------
+    @classmethod
+    def parse(cls, path: str) -> "Document":
+        """Parse any supported file into the UDM (dispatches by extension)."""
+        from ..parsers import parse as _parse  # runtime import avoids a cycle
+
+        return _parse(path)
+
     def add(self, block: Block) -> Block:
         self.blocks.append(block)
         return block
 
+    # -- structural views --------------------------------------------------------
     def blocks_of(self, *types: BlockType) -> list[Block]:
         wanted = set(types)
         return [b for b in self.blocks if b.type in wanted]
+
+    @property
+    def tables(self) -> list[Table]:
+        """Cell-level table views derived from TABLE blocks (spec: first-class)."""
+        return [
+            Table(
+                rows=b.meta.get("rows") or [],
+                block_id=b.id,
+                provenance=b.provenance,
+                markdown=b.meta.get("markdown") or b.text,
+            )
+            for b in self.blocks
+            if b.type == BlockType.TABLE
+        ]
 
     def iter_sections(self) -> Iterable[tuple[str, list[Block]]]:
         """Yield ``(section_title, blocks)`` grouped by top-level headings."""
@@ -116,131 +166,56 @@ class Document:
     def to_text(self) -> str:
         return "\n\n".join(b.text for b in self.blocks if b.text).strip() + "\n"
 
-    def to_markdown(self) -> str:
+    def to_markdown(self, cite: bool = False) -> str:
+        """Render clean Markdown; ``cite=True`` appends provenance anchors.
+
+        Anchors are HTML comments so the Markdown stays renderable everywhere:
+        ``<!-- src: report.pdf | p.7 | 3. Financials > 3.2 Revenue -->``
+        """
         out: list[str] = []
         for b in self.blocks:
             if b.type == BlockType.HEADING:
-                out.append(f"{'#' * max(1, b.level or 1)} {b.text}")
+                rendered = f"{'#' * max(1, b.level or 1)} {b.text}"
             elif b.type == BlockType.LIST_ITEM:
-                out.append(f"{'  ' * ((b.level or 1) - 1)}- {b.text}")
+                rendered = f"{'  ' * ((b.level or 1) - 1)}- {b.text}"
             elif b.type == BlockType.CODE:
                 lang = b.meta.get("language", "")
-                out.append(f"```{lang}\n{b.text}\n```")
+                rendered = f"```{lang}\n{b.text}\n```"
             elif b.type == BlockType.QUOTE:
-                out.append("\n".join(f"> {line}" for line in b.text.splitlines()))
+                rendered = "\n".join(f"> {line}" for line in b.text.splitlines())
             elif b.type == BlockType.TABLE:
-                out.append(b.meta.get("markdown") or b.text)
+                rendered = b.meta.get("markdown") or b.text
             elif b.type == BlockType.IMAGE:
-                out.append(f"![{b.text or 'image'}]({b.meta.get('src', '')})")
+                rendered = f"![{b.text or 'image'}]({b.meta.get('src', '')})"
             elif b.type == BlockType.PAGE_BREAK:
-                out.append("\n---\n")
+                rendered = "\n---\n"
             elif b.text:
-                out.append(b.text)
+                rendered = b.text
+            else:
+                continue
+            if cite and b.provenance is not None and b.type != BlockType.PAGE_BREAK:
+                rendered += f" {_cite_anchor(b.provenance)}"
+            out.append(rendered)
         return "\n\n".join(out).strip() + "\n"
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "udm_version": UDM_VERSION,
             "id": self.id,
             "source": self.source,
-            "meta": self.meta,
+            "metadata": self.meta,
             "blocks": [b.to_dict() for b in self.blocks],
+            "tables": [t.to_dict() for t in self.tables],
         }
 
-
-@dataclass
-class Chunk:
-    """A retrieval unit assembled from one or more blocks."""
-
-    text: str
-    id: str = field(default_factory=lambda: _new_id("chk"))
-    block_ids: list[str] = field(default_factory=list)
-    provenance: list[Provenance] = field(default_factory=list)
-    embedding: Optional[list[float]] = None
-    meta: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self, include_embedding: bool = False) -> dict[str, Any]:
-        d: dict[str, Any] = {
-            "id": self.id,
-            "text": self.text,
-            "block_ids": self.block_ids,
-            "provenance": [p.to_dict() for p in self.provenance],
-            "meta": self.meta,
-        }
-        if include_embedding and self.embedding is not None:
-            d["embedding"] = self.embedding
-        return d
+    def to_json(self, indent: int | None = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
 
 
-@dataclass
-class Citation:
-    """A traceable pointer to source content, attached to retrieved results."""
-
-    source: str
-    page: Optional[int] = None
-    section: Optional[str] = None
-    bbox: Optional[tuple[float, float, float, float]] = None
-    confidence: float = 1.0
-    version: Optional[str] = None
-
-    @classmethod
-    def from_provenance(cls, p: Provenance) -> "Citation":
-        return cls(
-            source=p.source,
-            page=p.page,
-            section=p.section,
-            bbox=p.bbox,
-            confidence=p.confidence,
-            version=p.version,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        return {k: v for k, v in asdict(self).items() if v is not None}
-
-
-@dataclass
-class ContextPackage:
-    """The differentiator: a structured, cited bundle ready to hand to an LLM.
-
-    Rather than returning raw chunks, AgentContext returns everything an agent
-    needs to answer *and* to attribute its answer.
-    """
-
-    query: str
-    summary: str = ""
-    chunks: list[Chunk] = field(default_factory=list)
-    tables: list[dict[str, Any]] = field(default_factory=list)
-    images: list[dict[str, Any]] = field(default_factory=list)
-    entities: list[dict[str, Any]] = field(default_factory=list)
-    relationships: list[dict[str, Any]] = field(default_factory=list)
-    citations: list[Citation] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
-    confidence: float = 0.0
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "query": self.query,
-            "summary": self.summary,
-            "chunks": [c.to_dict() for c in self.chunks],
-            "tables": self.tables,
-            "images": self.images,
-            "entities": self.entities,
-            "relationships": self.relationships,
-            "citations": [c.to_dict() for c in self.citations],
-            "metadata": self.metadata,
-            "confidence": self.confidence,
-        }
-
-    def to_prompt(self) -> str:
-        """Render the package as a citation-annotated prompt block for an LLM."""
-        lines: list[str] = []
-        if self.summary:
-            lines.append(f"Summary: {self.summary}\n")
-        lines.append("Context:")
-        for i, chunk in enumerate(self.chunks, 1):
-            cite = ""
-            if chunk.provenance:
-                p = chunk.provenance[0]
-                loc = p.section or (f"p.{p.page}" if p.page else "")
-                cite = f" [source: {p.source}{(' ' + loc) if loc else ''}]"
-            lines.append(f"[{i}]{cite}\n{chunk.text}\n")
-        return "\n".join(lines).strip()
+def _cite_anchor(p: Provenance) -> str:
+    parts = [f"src: {p.source}"]
+    if p.page is not None:
+        parts.append(f"p.{p.page}")
+    if p.section_path:
+        parts.append(p.section_path)
+    return "<!-- " + " | ".join(parts) + " -->"

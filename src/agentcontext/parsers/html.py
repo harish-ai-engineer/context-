@@ -5,7 +5,7 @@ from __future__ import annotations
 from html.parser import HTMLParser as _StdHTMLParser
 
 from ..core.model import Block, BlockType, Document, Provenance
-from .base import Parser, register_parser
+from .base import Parser, SectionTracker, register_parser
 
 _SKIP = {"script", "style", "head", "meta", "link", "noscript"}
 _HEADINGS = {"h1": 1, "h2": 2, "h3": 3, "h4": 4, "h5": 5, "h6": 6}
@@ -61,6 +61,7 @@ class _Collector(_StdHTMLParser):
 
 class HTMLParser(Parser):
     name = "html"
+    version = "html-parser/0.1"
     extensions = ("html", "htm")
 
     def parse(self, path: str) -> Document:
@@ -72,21 +73,21 @@ class HTMLParser(Parser):
         c = _Collector()
         c.feed(raw)
         c._flush()
-        doc = Document(source=source, meta={"parser": self.name})
+        doc = Document(source=source)
         if c._title:
             doc.meta["title"] = c._title
-        section = c._title
+        sections = SectionTracker()
         for kind, level, text in c.blocks:
             btype = BlockType(kind)
-            if btype == BlockType.HEADING and level <= 1:
-                section = text
+            if btype == BlockType.HEADING:
+                sections.push(level, text)
             doc.add(
                 Block(
                     type=btype,
                     text=text,
                     level=level or None,
-                    provenance=Provenance(source=source, section=section, parser=self.name,
-                                          version="html-parser/0.1"),
+                    provenance=Provenance(source=source, section_path=sections.path,
+                                          parser=self.name, version=self.version),
                 )
             )
         return doc

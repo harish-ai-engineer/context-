@@ -1,8 +1,8 @@
 """A tiny, dependency-free plugin registry.
 
-Every extensible component type (parsers, chunkers, embedders, retrievers,
-exporters, connectors) gets its own registry. This is what makes the plugin
-system (#16) a first-class concern from v0.1 rather than a bolt-on later.
+v0.1 ships one registry (parsers). The class is generic on purpose: chunkers,
+embedders, retrievers and exporters get their own instances in later versions
+without reworking the architecture.
 """
 
 from __future__ import annotations
@@ -44,8 +44,5 @@ class Registry(Generic[T]):
         return name in self._items
 
 
-# Global registries for each pluggable component type.
+# The one v0.1 registry.
 parsers: Registry = Registry("parser")
-chunkers: Registry = Registry("chunker")
-embedders: Registry = Registry("embedder")
-retrievers: Registry = Registry("retriever")
