@@ -32,7 +32,7 @@ dev = ["pytest>=8.0", "ruff>=0.5"]
 agentcontext = "agentcontext.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/aanseaa/agentcontext"
+Homepage = "https://github.com/harish-ai-engineer/agentcontext"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentcontext"]
