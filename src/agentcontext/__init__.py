@@ -19,6 +19,7 @@ Quick start::
 
 from __future__ import annotations
 
+from .api import Doc
 from .chunking import chunk
 from .context import build_context
 from .core.model import (
@@ -33,6 +34,7 @@ from .core.model import (
 from .embeddings import get_embedder
 from .parsers import parse
 from .retrieval import ScoredChunk, VectorRetriever, retrieve
+from .understanding import summarize
 
 __version__ = "0.1.0"
 
@@ -46,6 +48,8 @@ __all__ = [
     "Document",
     "Provenance",
     "ScoredChunk",
+    # agent-facing object API
+    "Doc",
     # pipeline stages
     "parse",
     "chunk",
@@ -53,6 +57,7 @@ __all__ = [
     "retrieve",
     "VectorRetriever",
     "build_context",
+    "summarize",
     # high-level helpers
     "ingest",
     "build_context_from_files",

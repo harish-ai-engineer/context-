@@ -29,6 +29,18 @@ for c in pkg.citations:  # every claim is traceable to its source
     print(c.to_dict())
 ```
 
+Or use the object API — one lazy, cached handle over the whole pipeline:
+
+```python
+doc = ac.Doc("report.pdf")
+
+doc.summary()                  # extractive summary (offline)
+doc.search("revenue", k=3)     # ranked, cited chunks
+doc.context("What changed?")   # cited ContextPackage for an LLM
+doc.tables(); doc.sections()   # structural views
+doc.to_markdown()
+```
+
 Each stage is also available on its own:
 
 ```python
@@ -44,6 +56,11 @@ pkg     = ac.build_context("revenue", results, documents=[doc])
 # Parse a document into Markdown / text / JSON
 agentcontext parse report.pdf --to markdown
 
+# Chunk, search, summarize
+agentcontext chunk report.pdf --strategy section
+agentcontext search "revenue" --docs report.pdf deck.pptx --k 5
+agentcontext summarize report.pdf --sentences 3
+
 # Build a cited context package for a query
 agentcontext context "What is the refund policy?" --docs policy.pdf faq.md --k 5
 agentcontext context "revenue in Q3" --docs report.pdf --format json
@@ -53,10 +70,11 @@ agentcontext context "revenue in Q3" --docs report.pdf --format json
 
 | Stage | Module | Built-ins |
 |-------|--------|-----------|
-| **parse** | `agentcontext.parsers` | text/markdown, HTML, PDF (`pypdf`), DOCX (`python-docx`) |
+| **parse** | `agentcontext.parsers` | text/markdown, HTML, CSV/TSV, JSON/JSONL, XML, PPTX, XLSX (all stdlib), PDF (`pypdf`), DOCX (`python-docx`) |
 | **chunk** | `agentcontext.chunking` | `token` (fixed-size + overlap), `section` (structure-preserving) |
 | **embed** | `agentcontext.embeddings` | `hashing` (offline default), `openai` |
 | **retrieve** | `agentcontext.retrieval` | `vector` (in-memory cosine) |
+| **understand** | `agentcontext.understanding` | `summarize` (extractive, offline) |
 | **context** | `agentcontext.context` | `build_context` → cited `ContextPackage` |
 
 Everything flows through one **Unified Document Model** (`Document` → `Block` → `Provenance`), so a chunk returned to an agent can always be traced back to an exact source location. Each stage is a plugin registered in `agentcontext.core.registry`, so new parsers, chunkers, embedders, and retrievers drop in without touching the core.
