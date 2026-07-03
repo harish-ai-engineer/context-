@@ -1,0 +1,48 @@
+{
+  "text": "Employee Handbook This handbook summarizes working policies for all full-time employees and applies from the first day of employment. Time Off Employees accrue 1.75 vacation days per month, capped at 30 days. Unused days above the cap are forfeited at year end. Remote Work Employees may work remotely up to three days per week with manager approval recorded in the HR system.",
+  "headings": [
+    [
+      1,
+      "Employee Handbook"
+    ],
+    [
+      2,
+      "Time Off"
+    ],
+    [
+      2,
+      "Remote Work"
+    ]
+  ],
+  "tables": [
+    [
+      [
+        "Benefit",
+        "Eligibility",
+        "Waiting period"
+      ],
+      [
+        "Health insurance",
+        "All employees",
+        "None"
+      ],
+      [
+        "401k matching",
+        "Full-time",
+        "90 days"
+      ],
+      [
+        "Sabbatical",
+        "5+ years tenure",
+        "None"
+      ]
+    ]
+  ],
+  "provenance": [
+    {
+      "prefix": "Employees may work remotely",
+      "section_path": "Employee Handbook > Remote Work"
+    }
+  ],
+  "pages": null
+}

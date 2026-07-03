@@ -1,0 +1,15 @@
+<html><head><title>Ingest API Reference</title></head><body>
+<h1>Ingest API Reference</h1>
+<p>The Ingest API accepts documents for parsing and returns a job identifier that can be polled for results.</p>
+<h2>Authentication</h2>
+<p>All requests require a bearer token passed in the Authorization header. Tokens are scoped per project and expire after 90 days.</p>
+<h2>Endpoints</h2>
+<h3>POST /v1/parse</h3>
+<p>Submits a document for parsing. The request body is multipart form data with a single file field.</p>
+<ul>
+<li>file: the document to parse, up to 50 MB.</li>
+<li>callback_url: optional webhook for completion.</li>
+</ul>
+<h3>GET /v1/jobs</h3>
+<p>Lists recent parse jobs for the authenticated project, newest first, paginated in groups of 25.</p>
+</body></html>

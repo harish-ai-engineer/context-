@@ -1,0 +1,16 @@
+{
+  "text": "INVOICE 2041 Billed to Acme Corporation for consulting services rendered in June 2026. Engagement: data pipeline architecture review, 32 hours at 120 USD per hour. Subtotal 3,840 USD. Tax at 8 percent adds 307 USD. Total amount due: 4,147 USD within 30 days of the invoice date. Payment accepted by bank transfer to the account listed in the master services agreement. Late payments accrue interest at 1.5 percent per month as permitted by law.",
+  "headings": [],
+  "tables": [],
+  "provenance": [
+    {
+      "prefix": "INVOICE 2041",
+      "page": 1
+    },
+    {
+      "prefix": "Total amount due",
+      "page": 2
+    }
+  ],
+  "pages": 2
+}

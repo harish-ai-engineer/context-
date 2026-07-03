@@ -1,0 +1,7 @@
+Weekly platform sync, July 1st. Attendees: Dana, Marcus, Priya, and Tom. Dana chaired the meeting.
+
+Priya reported that the ingestion backlog dropped from 4,200 to 300 documents after the parser fix shipped on Friday.
+
+Marcus raised a concern about provenance loss in the HTML pipeline; a spike was scheduled for next sprint.
+
+Action items: Tom to draft the OCR vendor comparison, Dana to schedule the security review, Priya to close out the backlog dashboard.

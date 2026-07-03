@@ -37,8 +37,8 @@ License: **Apache-2.0** (decided; supersedes the MIT line in the spec draft).
 | Parser protocol: `can_parse` + `parse`, registry | ✅ |
 | Zero heavyweight deps (no torch, no CUDA, no keys) | ✅ |
 | PDF bbox provenance | ⏳ null in v0.1 (text-layer only; layout analysis is v0.2) |
-| Golden corpus + CI metrics | ❌ **next up** |
-| Public benchmark page vs MarkItDown/Docling | ❌ stub only (`BENCHMARKS.md`) |
+| Golden corpus + CI metrics | 🟡 harness + seed corpus (7 docs) live; needs real docs + CI wiring |
+| Public benchmark page vs MarkItDown/Docling | 🟡 seed results published (markitdown scored; docling pending install) |
 | < 5s parse for 50-page digital PDF | ❓ unmeasured |
 | pip install works Linux/macOS/Windows | ❓ untested (no publish yet) |
 
@@ -48,8 +48,10 @@ Verified: 16/16 spec-compliance tests (`tests/test_udm.py`), live CLI checked.
 
 ## Definition of done — remaining for v0.1 release
 
-1. **Golden corpus** (25–50 real documents) + accuracy metrics in CI
-2. **Benchmark page** with honest numbers vs MarkItDown and Docling
+1. Grow the golden corpus to 25–50 **real** documents (seed harness done:
+   `benchmarks/make_corpus.py` + `benchmarks/harness.py`, 4 metrics, honest
+   zero-scoring for failed parses)
+2. Wire the harness into CI; add Docling to the baseline row
 3. Perf check: 50-page digital PDF under 5 seconds
 4. Package publish dry-run (`pip install agentcontext`) on all three OSes
 
