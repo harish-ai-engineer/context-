@@ -39,7 +39,7 @@ License: **Apache-2.0** (decided; supersedes the MIT line in the spec draft).
 | PDF bbox provenance | ⏳ null in v0.1 (text-layer only; layout analysis is v0.2) |
 | Golden corpus + CI metrics | 🟡 harness + seed corpus (7 docs) live; needs real docs + CI wiring |
 | Public benchmark page vs MarkItDown/Docling | 🟡 seed results published (markitdown scored; docling pending install) |
-| < 5s parse for 50-page digital PDF | ❓ unmeasured |
+| < 5s parse for 50-page digital PDF | ✅ 0.51s measured (synthetic 50-pager, pypdf backend) |
 | pip install works Linux/macOS/Windows | ❓ untested (no publish yet) |
 
 Verified: 16/16 spec-compliance tests (`tests/test_udm.py`), live CLI checked.
@@ -52,7 +52,7 @@ Verified: 16/16 spec-compliance tests (`tests/test_udm.py`), live CLI checked.
    `benchmarks/make_corpus.py` + `benchmarks/harness.py`, 4 metrics, honest
    zero-scoring for failed parses)
 2. Wire the harness into CI; add Docling to the baseline row
-3. Perf check: 50-page digital PDF under 5 seconds
+3. ~~Perf check~~ ✅ 0.51s for a 50-page digital PDF
 4. Package publish dry-run (`pip install agentcontext`) on all three OSes
 
 ## v0.2 preview (do not build yet)
