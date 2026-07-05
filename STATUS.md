@@ -24,7 +24,7 @@ License: **Apache-2.0** (decided; supersedes the MIT line in the spec draft).
 
 | Spec item | Status |
 |-----------|--------|
-| Four input formats: PDF, DOCX, HTML, MD (+txt) | ✅ |
+| Four input formats: PDF, DOCX, HTML, MD (+txt) | ✅ (+ PPTX, XLSX in v0.2 work) |
 | UDM with `udm_version` | ✅ |
 | **No block without provenance; explicit nulls, never omitted** | ✅ enforced + tested |
 | Hierarchical `section_path` ("2. Methods > 2.1 Setup") | ✅ md/html/docx |
@@ -61,8 +61,9 @@ Verified: 16/16 spec-compliance tests (`tests/test_udm.py`), live CLI checked.
 Theme: **provenance survives more formats and the first pipeline step.**
 Order of work (one at a time, tests + benchmarks before the next):
 
-1. **PPTX + XLSX parsers** — port from `platform` (stdlib zip+xml, already
-   written); slides carry `page`, sheets carry `section_path`; add corpus docs
+1. ~~**PPTX + XLSX parsers**~~ ✅ done 2026-07-05 — stdlib zip+xml; slides carry
+   `page` + slide-title `section_path`, sheets carry workbook sheet names;
+   corpus docs generated with real python-pptx/openpyxl for baseline fairness
 2. **Provenance-preserving chunking** — port `token`/`section` chunkers from
    `platform`; every `Chunk` keeps the provenance list of its blocks. This is
    the bridge from parser to context platform

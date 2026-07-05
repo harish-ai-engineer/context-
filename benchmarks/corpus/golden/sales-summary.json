@@ -1,0 +1,35 @@
+{
+  "text": "",
+  "headings": [],
+  "tables": [
+    [
+      [
+        "Region",
+        "Units",
+        "Revenue"
+      ],
+      [
+        "North",
+        "1240",
+        "310000"
+      ],
+      [
+        "South",
+        "980",
+        "245000"
+      ],
+      [
+        "Europe",
+        "1610",
+        "402500"
+      ]
+    ]
+  ],
+  "provenance": [
+    {
+      "prefix": "| Region",
+      "section_path": "Q3 Sales"
+    }
+  ],
+  "pages": null
+}

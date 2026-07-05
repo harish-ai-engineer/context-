@@ -1,0 +1,18 @@
+{
+  "text": "Atlas Data Platform A unified layer for ingesting, cataloging, and governing analytical data. Lineage Tracking Column-level lineage is captured automatically for every pipeline run. Auditors can trace any dashboard number back to its source system. Pricing Standard tier starts at 2,000 USD per month with unlimited seats.",
+  "headings": [],
+  "tables": [],
+  "provenance": [
+    {
+      "prefix": "Column-level lineage",
+      "page": 2,
+      "section_path": "Lineage Tracking"
+    },
+    {
+      "prefix": "Standard tier starts",
+      "page": 3,
+      "section_path": "Pricing"
+    }
+  ],
+  "pages": 3
+}

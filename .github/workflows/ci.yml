@@ -60,7 +60,7 @@ jobs:
       - name: Install with baselines
         run: |
           pip install -e ".[all,dev]"
-          pip install "markitdown[pdf,docx]"
+          pip install "markitdown[pdf,docx,pptx,xlsx]"
       - name: Regenerate corpus and run harness
         run: |
           python benchmarks/make_corpus.py

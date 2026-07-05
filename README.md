@@ -122,10 +122,12 @@ Digital goods are excluded. <!-- src: policy.md | Refund Policy > Exceptions -->
 
 - **PDF** (digital / text-layer)
 - **DOCX**
+- **PPTX** — slides carry page numbers (stdlib, no python-pptx needed)
+- **XLSX** — sheets become cited tables (stdlib, no openpyxl needed)
 - **HTML**
 - **Markdown** (normalization + provenance) and plain text
 
-OCR for scanned documents, PPTX, and XLSX are next on the [roadmap](#roadmap).
+OCR for scanned documents is next on the [roadmap](#roadmap).
 
 ## Benchmarks
 
@@ -136,7 +138,7 @@ We will publish the numbers even where we lose. Trust is the product.
 ## Roadmap
 
 - **v0.1 (now):** PDF/DOCX/HTML/MD → Markdown + JSON with full provenance. CLI + Python SDK.
-- **v0.2:** OCR for scanned documents, PPTX/XLSX parsers, provenance-preserving chunking.
+- **v0.2 (in progress):** ~~PPTX/XLSX parsers~~ ✅, provenance-preserving chunking, OCR for scanned documents.
 - **v0.3:** Embedding adapters, citation-aware retrieval helpers.
 - **Later:** Context packages for agents — retrieval that returns not just chunks, but summaries, tables, entities, and citations in one structured payload.
 

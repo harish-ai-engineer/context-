@@ -37,6 +37,7 @@ def norm(s: str) -> str:
 
 def md_to_plain(md: str) -> str:
     """Strip markdown syntax so baseline output is compared on content only."""
+    md = re.sub(r"<!--.*?-->", " ", md, flags=re.S)  # e.g. slide-number comments
     out = []
     for line in md.splitlines():
         stripped = line.strip()
@@ -143,7 +144,11 @@ ADAPTERS = {
 
 def score(result: Result, golden: dict) -> dict:
     s: dict = {}
-    s["text"] = difflib.SequenceMatcher(None, result.text, norm(golden["text"])).ratio()
+    gold_text = norm(golden["text"])
+    if gold_text:
+        s["text"] = difflib.SequenceMatcher(None, result.text, gold_text).ratio()
+    else:
+        s["text"] = None  # nothing to extract (e.g. table-only workbooks)
 
     gold_heads = [(lvl, norm(t)) for lvl, t in golden["headings"]]
     if gold_heads:

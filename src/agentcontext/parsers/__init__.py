@@ -9,5 +9,6 @@ from . import text  # noqa: F401  (txt, md)
 from . import html  # noqa: F401
 from . import pdf  # noqa: F401  (lazy: pypdf only needed at parse time)
 from . import docx  # noqa: F401  (lazy: python-docx only needed at parse time)
+from . import office  # noqa: F401  (pptx, xlsx — stdlib zipfile+xml)
 
 __all__ = ["Parser", "SectionTracker", "parse", "get_parser_for", "register_parser"]

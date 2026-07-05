@@ -244,6 +244,48 @@ def render_pdf(pages: list[list[str]]) -> bytes:
     return bytes(buf)
 
 
+def render_pptx(path: str, slides: list[list[str]]) -> None:
+    """Valid PPTX via python-pptx so every tool under benchmark can open it."""
+    from pptx import Presentation
+
+    prs = Presentation()
+    layout = prs.slide_layouts[1]  # Title and Content
+    for texts in slides:
+        slide = prs.slides.add_slide(layout)
+        slide.shapes.title.text = texts[0]
+        body = slide.placeholders[1].text_frame
+        for j, para in enumerate(texts[1:]):
+            (body.paragraphs[0] if j == 0 else body.add_paragraph()).text = para
+    prs.save(path)
+
+
+def render_xlsx(path: str, sheet_name: str, rows: list[list[str]]) -> None:
+    """Valid XLSX via openpyxl (exercises the sharedStrings path in our parser)."""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+    for row in rows:
+        ws.append(row)
+    wb.save(path)
+
+
+PRODUCT_DECK = [
+    ["Atlas Data Platform", "A unified layer for ingesting, cataloging, and governing analytical data."],
+    ["Lineage Tracking", "Column-level lineage is captured automatically for every pipeline run.",
+     "Auditors can trace any dashboard number back to its source system."],
+    ["Pricing", "Standard tier starts at 2,000 USD per month with unlimited seats."],
+]
+
+SALES_ROWS = [
+    ["Region", "Units", "Revenue"],
+    ["North", "1240", "310000"],
+    ["South", "980", "245000"],
+    ["Europe", "1610", "402500"],
+]
+
+
 def render_docx(path: str, items, table_rows) -> None:
     import docx
 
@@ -323,6 +365,31 @@ def main() -> None:
             {"prefix": "INVOICE 2041", "page": 1},
             {"prefix": "Total amount due", "page": 2},
         ]))
+
+    # Slide-title heading LEVEL is a rendering convention (we use h2, others
+    # use h1), so decks don't participate in the structure metric — slide
+    # mapping is scored by the provenance samples instead.
+    deck_items = [("p", t) for texts in PRODUCT_DECK for t in texts]
+    try:
+        render_pptx(os.path.join(CORPUS, "product-deck.pptx"), PRODUCT_DECK)
+        write("product-deck.pptx", None, _golden(
+            deck_items, pages=len(PRODUCT_DECK),
+            prov_samples=[
+                {"prefix": "Column-level lineage", "page": 2, "section_path": "Lineage Tracking"},
+                {"prefix": "Standard tier starts", "page": 3, "section_path": "Pricing"},
+            ]))
+    except ImportError:
+        print("skipped product-deck.pptx (python-pptx not installed)")
+
+    try:
+        render_xlsx(os.path.join(CORPUS, "sales-summary.xlsx"), "Q3 Sales", SALES_ROWS)
+        write("sales-summary.xlsx", None, _golden(
+            [], tables=[SALES_ROWS],
+            prov_samples=[
+                {"prefix": "| Region", "section_path": "Q3 Sales"},
+            ]))
+    except ImportError:
+        print("skipped sales-summary.xlsx (openpyxl not installed)")
 
     try:
         render_docx(os.path.join(CORPUS, "hr-handbook.docx"), HR_HANDBOOK, HR_TABLE)
